@@ -1,0 +1,98 @@
+<coordinator-app xmlns="uri:oozie:coordinator:0.4" name="${coordName}" frequency="${coord:days(1)}" start="${startTime}" end="${endTime}" timezone="UTC"  xmlns:sla="uri:oozie:sla:0.2">
+
+    <controls>
+        <timeout>-1</timeout>
+        <concurrency>10</concurrency>
+    </controls>
+
+    <datasets>
+        <!--Input data sets-->
+        <dataset name="input_Segment_SID" frequency="${coord:days(1)}" initial-instance="${initialInstance}" timezone="UTC">
+            <uri-template>${InputSegmentSIDRoot}</uri-template>
+            <done-flag></done-flag>
+        </dataset>
+        <dataset name="input_sig_matrix_inverse" frequency="${coord:days(1)}" initial-instance="${initialInstance}" timezone="UTC">
+            <uri-template>${LookalikeSigMatrixInverseRoot}/${YEAR}${MONTH}${DAY}</uri-template>
+            <done-flag>_SUCCESS</done-flag>
+        </dataset>
+        <dataset name="input_sig_matrix" frequency="${coord:days(1)}" initial-instance="${initialInstance}" timezone="UTC">
+            <uri-template>${LookalikeSigMatrixRoot}/${YEAR}${MONTH}${DAY}</uri-template>
+            <done-flag>_SUCCESS</done-flag>
+        </dataset>
+
+        <!--Output data sets-->
+        <dataset name="output_user_to_cluster_expansion" frequency="${coord:days(1)}" initial-instance="${initialInstance}" timezone="UTC">
+            <uri-template>${ClosedLoopUserToClusterExpansionRoot}/${YEAR}${MONTH}${DAY}</uri-template>
+        </dataset>
+        <dataset name="output_cluster_to_user_expansion" frequency="${coord:days(1)}" initial-instance="${initialInstance}" timezone="UTC">
+            <uri-template>${ClosedLoopClusterToUserExpansionRoot}/${YEAR}${MONTH}${DAY}</uri-template>
+        </dataset>
+
+    </datasets>
+
+    <input-events>
+        <data-in name="in_Segment_SID" dataset="input_Segment_SID">
+            <instance>${coord:latest(0)}</instance>
+        </data-in>
+        <data-in name="in_sig_matrix_inverse" dataset="input_sig_matrix_inverse">
+            <instance>${coord:latest(0)}</instance>
+        </data-in>
+        <data-in name="in_sig_matrix" dataset="input_sig_matrix">
+            <instance>${coord:latest(0)}</instance>
+        </data-in>
+    </input-events>
+
+    <output-events>
+        <data-out name="out_user_to_cluster_expansion" dataset="output_user_to_cluster_expansion">
+            <instance>${coord:current(0)}</instance>
+        </data-out>
+        <data-out name="out_cluster_to_user_expansion" dataset="output_cluster_to_user_expansion">
+            <instance>${coord:current(0)}</instance>
+        </data-out>
+    </output-events>
+
+    <action>
+        <workflow>
+            <app-path>${oozieCoordApplicationPath}/lift_analysis</app-path>
+            <configuration>
+                <property>
+                    <name>inputSegmentSID</name>
+                    <value>${coord:dataIn('in_Segment_SID')}</value>
+                </property>
+                <property>
+                    <name>inputSigMatrixInverse</name>
+                    <value>${coord:dataIn('in_sig_matrix_inverse')}</value>
+                </property>
+                <property>
+                    <name>inputSigMatrix</name>
+                    <value>${coord:dataIn('in_sig_matrix')}</value>
+                </property>
+                <property>
+                    <name>outputUserToClusterExpansion</name>
+                    <value>${coord:dataOut('out_user_to_cluster_expansion')}</value>
+                </property>
+                <property>
+                    <name>outputClusterToUserExpansion</name>
+                    <value>${coord:dataOut('out_cluster_to_user_expansion')}</value>
+                </property>
+                <property>
+                    <name>date</name>
+                    <value>${coord:formatTime(coord:nominalTime(),'yyyyMMdd')}</value>
+                </property>
+                <property>
+                    <name>previousDate</name>
+                    <value>${coord:formatTime(coord:dateOffset(coord:nominalTime(), -1, 'DAY'), 'yyyyMMdd')}</value>
+                </property>
+                <property>
+                    <name>cleanupDate</name>
+                    <value>${coord:formatTime(coord:dateOffset(coord:nominalTime(), -400, 'DAY'), 'yyyyMMdd')}</value>
+                </property>
+                <property>
+                    <name>lookBackDate</name>
+                    <value>${coord:formatTime(coord:dateOffset(coord:nominalTime(), -30, 'DAY'), 'yyyy-MM-dd')}</value>
+                </property>
+            </configuration>
+        </workflow>
+    </action>
+
+</coordinator-app>

@@ -1,0 +1,7 @@
+<bundle-app name='pipeline_dev' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns='uri:oozie:bundle:0.1'>
+
+  <coordinator name='oozie_test_pipeline_dev_coord'>
+        <app-path>${oozieCoordApplicationPath}/pipeline_dev</app-path>
+    </coordinator>
+
+</bundle-app>

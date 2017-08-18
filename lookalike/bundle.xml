@@ -1,0 +1,5 @@
+<bundle-app name='lookalike' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns='uri:oozie:bundle:0.1'>
+    <coordinator name='lift_analysis' >
+        <app-path>${oozieCoordApplicationPath}/lift_analysis</app-path>
+    </coordinator>
+</bundle-app>

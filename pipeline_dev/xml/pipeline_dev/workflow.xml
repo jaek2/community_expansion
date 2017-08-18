@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<workflow-app xmlns="uri:oozie:workflow:0.5" name="fetch_SID">
+  <credentials>
+        <credential name='hcatauth' type='hcat'>
+            <property>
+                <name>hcat.metastore.uri</name>
+                <value>${hcatUri}</value>
+            </property>
+            <property>
+                <name>hcat.metastore.principal</name>
+                <value>${hcatPrincipal}</value>
+            </property>
+        </credential>
+    </credentials>
+
+  <start to ="run_pig"/>
+  <action name="run_pig" cred='hcatauth'>
+    <pig>
+      <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <configuration>
+                <property>
+                    <name>oozie.action.sharelib.for.pig</name>
+                    <value>pig_current,hcat_current</value>
+                </property>
+                <property>
+                    <name>mapred.job.queue.name</name>
+                    <value>${queueName}</value>
+                </property>
+                <property>
+                    <name>mapreduce.cluster.acls.enabled</name>
+                    <value>true</value>
+                </property>
+                <property>
+                    <name>mapreduce.job.acl-view-job</name>
+                    <value>*</value>
+                </property>
+            </configuration>
+            <script>${script_name}</script>
+            <param>OUTPUT=${pipelineDevBaseDir}/output_3/${date}</param>
+    </pig>
+    <ok to="end"/>
+    <error to="fail"/>
+  </action>
+
+  <kill name="fail">
+    <message>Failed</message>
+  </kill>
+  <end name= "end"/>
+</workflow-app>

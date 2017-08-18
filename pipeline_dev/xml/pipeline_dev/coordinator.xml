@@ -1,0 +1,19 @@
+<coordinator-app name="${coordName}"  frequency="${coord:days(1)}" start="${startTime}" end="${endTime}" timezone="UTC" xmlns="uri:oozie:coordinator:0.4"  xmlns:sla="uri:oozie:sla:0.2">
+    <controls>
+        <timeout>-1</timeout>
+        <concurrency>10</concurrency>
+        <execution>FIFO</execution>
+    </controls>
+
+    <action>
+        <workflow>
+            <app-path>${oozieCoordApplicationPath}/pipeline_dev</app-path>
+            <configuration>
+                <property>
+                    <name>date</name>
+                    <value>${coord:formatTime(coord:nominalTime(),'yyyyMMddHHmm')}</value>
+                </property>
+            </configuration>
+        </workflow>
+    </action>
+</coordinator-app>

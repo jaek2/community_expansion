@@ -1,0 +1,181 @@
+<?xml version="1.0"?>
+<workflow-app xmlns="uri:oozie:workflow:0.5" name="${coordName}_lift_analysis_${date}">
+    <global>
+        <job-tracker>${jobTracker}</job-tracker>
+        <name-node>${nameNode}</name-node>
+        <configuration>
+            <property>
+                <name>mapreduce.job.queuename</name>
+                <value>${queueName}</value>
+            </property>
+            <property>
+                <name>mapreduce.map.speculative</name>
+                <value>true</value>
+            </property>
+            <property>
+                <name>mapreduce.reduce.speculative</name>
+                <value>true</value>
+            </property>
+            <property>
+                <name>mapreduce.job.acl-modify-job</name>
+                <value>${ACL_modify}</value>
+            </property>
+            <property>
+                <name>mapreduce.job.acl-view-job</name>
+                <value>${ACL_view}</value>
+            </property>
+            <property>
+                <name>oozie.launcher.mapreduce.job.acl-modify-job</name>
+                <value>${ACL_modify}</value>
+            </property>
+            <property>
+                <name>oozie.launcher.mapreduce.job.acl-view-job</name>
+                <value>${ACL_view}</value>
+            </property>
+            <property>
+                <name>mapred.map.tasks.speculative.execution</name>
+                <value>true</value>
+            </property>
+            <property>
+                <name>mapred.reduce.tasks.speculative.execution</name>
+                <value>true</value>
+            </property>
+        </configuration>
+    </global>
+
+    <credentials>
+        <credential name="hcatauth" type="hcat">
+            <property>
+                <name>hcat.metastore.uri</name>
+                <value>${hcatUri}</value>
+            </property>
+            <property>
+                <name>hcat.metastore.principal</name>
+                <value>${hcatPrincipal}</value>
+            </property>
+        </credential>
+    </credentials>
+
+    <start to="user_to_cluster_expansion"/>
+
+    <action name="user_to_cluster_expansion">
+        <java>
+            <prepare>
+                <delete path="${outputUserToClusterExpansion}"/>
+                <delete path="${ClosedLoopUserToClusterExpansionRoot}/${cleanupDate}"/>
+            </prepare>
+            <configuration>
+                <property>
+                    <name>oozie.user.system.libpath</name>
+                    <value>false</value>
+                </property>
+                <property>
+                    <name>oozie.launcher.mapreduce.job.hdfs-servers</name>
+                    <value>${nameNode},${dbNameNode}</value>
+                </property>
+            </configuration>
+            <main-class>com.yahoo.adw.closed_loop.lift_analysis.UserToClusterExpansion</main-class>
+            <arg>-libjars</arg>
+            <arg>${oozieLocalLibPath}/closed_loop-1.0-dependencies.jar</arg>
+            <arg>-Dclp.date=${date}</arg>
+            <arg>-Dclp.user_data_path=${inputSegmentSID}</arg>
+            <arg>-Dclp.cluster_data_path=${inputSigMatrixInverse}</arg>
+            <arg>-Dmapreduce.output.fileoutputformat.outputdir=${outputUserToClusterExpansion}</arg>
+            <arg>-Dmapreduce.job.name=clp_lift_analysis_user_to_cluster_expansion_${date}</arg>
+            <arg>-Dmapreduce.job.queuename=${queueName}</arg>
+            <arg>-Dmapreduce.job.acl-view-job=${ACL_view}</arg>
+            <arg>-Dmapreduce.job.acl-modify-job=${ACL_modify}</arg>
+            <arg>-Dmapreduce.cluster.acls.enable=true</arg>
+            <arg>-Dmapreduce.reduce.tasks=32</arg>
+            <arg>-Dmapreduce.map.speculative=true</arg>
+            <arg>-Dmapreduce.reduce.speculative=true</arg>
+            <arg>-Dmapreduce.fileoutputcommitter.marksuccessfuljobs=true</arg>
+            <file>${oozieLocalLibPath}/closed_loop-1.0.jar</file>
+            <file>${oozieLocalLibPath}/closed_loop-1.0-dependencies.jar</file>
+        </java>
+        <ok to="publish_user_to_cluster_expansion"/>
+        <error to="send_email"/>
+    </action>
+
+    <action name="publish_user_to_cluster_expansion">
+        <fs>
+            <chgrp path="${outputUserToClusterExpansion}" group='${userGroup}' dir-files='true'>
+                <recursive/>
+            </chgrp>
+            <chmod path="${outputUserToClusterExpansion}" permissions='${permission}' dir-files='true'>
+                <recursive/>
+            </chmod>
+        </fs>
+        <ok to="cluster_to_user_expansion"/>
+        <error to="send_email"/>
+    </action>
+
+    <action name="cluster_to_user_expansion">
+        <java>
+            <prepare>
+                <delete path="${outputClusterToUserExpansion}"/>
+                <delete path="${ClosedLoopClusterToUserExpansionRoot}/${cleanupDate}"/>
+            </prepare>
+            <configuration>
+                <property>
+                    <name>oozie.user.system.libpath</name>
+                    <value>false</value>
+                </property>
+                <property>
+                    <name>oozie.launcher.mapreduce.job.hdfs-servers</name>
+                    <value>${nameNode},${dbNameNode}</value>
+                </property>
+            </configuration>
+            <main-class>com.yahoo.adw.closed_loop.lift_analysis.ClusterToUserExpansion</main-class>
+            <arg>-libjars</arg>
+            <arg>${oozieLocalLibPath}/closed_loop-1.0-dependencies.jar</arg>
+            <arg>-Dclp.date=${date}</arg>
+            <arg>-Dclp.cluster_data_path=${outputUserToClusterExpansion}</arg>
+            <arg>-Dclp.sig_matrix_data_path=${inputSigMatrix}</arg>
+            <arg>-Dmapreduce.output.fileoutputformat.outputdir=${outputClusterToUserExpansion}</arg>
+            <arg>-Dmapreduce.job.name=clp_lift_analysis_cluster_to_user_expansion_${date}</arg>
+            <arg>-Dmapreduce.job.queuename=${queueName}</arg>
+            <arg>-Dmapreduce.job.acl-view-job=${ACL_view}</arg>
+            <arg>-Dmapreduce.job.acl-modify-job=${ACL_modify}</arg>
+            <arg>-Dmapreduce.cluster.acls.enable=true</arg>
+            <arg>-Dmapreduce.reduce.tasks=64</arg>
+            <arg>-Dmapreduce.map.speculative=true</arg>
+            <arg>-Dmapreduce.reduce.speculative=true</arg>
+            <arg>-Dmapreduce.fileoutputcommitter.marksuccessfuljobs=true</arg>
+            <file>${oozieLocalLibPath}/closed_loop-1.0.jar</file>
+            <file>${oozieLocalLibPath}/closed_loop-1.0-dependencies.jar</file>
+        </java>
+        <ok to="publish_cluster_to_user_expansion"/>
+        <error to="send_email"/>
+    </action>
+
+    <action name="publish_cluster_to_user_expansion">
+        <fs>
+            <chgrp path="${outputClusterToUserExpansion}" group='${userGroup}' dir-files='true'>
+                <recursive/>
+            </chgrp>
+            <chmod path="${outputClusterToUserExpansion}" permissions='${permission}' dir-files='true'>
+                <recursive/>
+            </chmod>
+        </fs>
+        <ok to="end"/>
+        <error to="send_email"/>
+    </action>
+
+    <action name="send_email">
+        <email xmlns="uri:oozie:email-action:0.1">
+            <to>${alertEmail}</to>
+            <subject>closed-loop workflow failed in coordinator daily_user_events</subject>
+            <body>Adwprd workflow failed. Workflow name: ${wf:name()}. Workflow id: ${wf:id()}. URL:${oozieHttp}/?job=${wf:id()}</body>
+        </email>
+        <ok to="fail"/>
+        <error to="fail"/>
+    </action>
+
+    <kill name="fail">
+        <message>Mapreduce job failed, error message[${wf:errorMessage(wf:lastErrorNode())}]</message>
+    </kill>
+
+    <end name="end"/>
+
+</workflow-app>
